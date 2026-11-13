@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Subtitulador · El Chapucero</title>
+<style>
+  :root {
+    --fondo: #f4f4f6; --panel: #ffffff; --texto: #1d1d22; --suave: #6b6b76; --borde: #e2e2e8;
+    --rojo: #a8002f; --rojo-suave: #fbe9ee; --ok: #15803d; --error: #b91c1c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --fondo: #111114; --panel: #1b1b20; --texto: #ececf0; --suave: #9c9ca8; --borde: #2c2c34; --rojo-suave: #3a1520; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--fondo); color: var(--texto); }
+  header { display: flex; align-items: center; gap: 12px; padding: 12px 20px; background: var(--panel); border-bottom: 1px solid var(--borde); }
+  header h1 { font-size: 18px; margin: 0; letter-spacing: .2px; }
+  header h1 b { color: var(--rojo); }
+  .chip { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--rojo-suave); color: var(--texto); }
+  header .esp { flex: 1; }
+  a.link, button.link { color: var(--suave); font-size: 13px; background: none; border: 0; cursor: pointer; text-decoration: underline; }
+  main { display: grid; grid-template-columns: 340px 1fr; gap: 16px; padding: 16px 20px; align-items: start; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--borde); border-radius: 14px; padding: 16px; }
+  .panel h2 { font-size: 15px; margin: 0 0 12px; }
+  .estilos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .estilo { border: 2px solid var(--borde); border-radius: 10px; padding: 10px; cursor: pointer; text-align: center; font-weight: 600; font-size: 14px;
+    background: var(--panel); color: var(--texto); }
+  .estilo small { display: block; font-weight: 400; color: var(--suave); font-size: 11.5px; margin-top: 2px; }
+  .estilo.activo { border-color: var(--rojo); background: var(--rojo-suave); }
+  .elegir { width: 100%; border: 2px dashed var(--borde); border-radius: 12px; padding: 22px 14px; text-align: center; color: var(--suave);
+    cursor: pointer; background: var(--panel); font: inherit; transition: .15s; }
+  .elegir:hover { border-color: var(--rojo); background: var(--rojo-suave); color: var(--texto); }
+  .elegir b { color: var(--texto); font-size: 15px; }
+  .elegir:disabled { opacity: .5; cursor: default; }
+  .filaprog { display: flex; align-items: center; gap: 10px; }
+  .filaprog .barra { flex: 1; }
+  .cancelar { border: 1px solid var(--borde); background: var(--panel); color: var(--error); border-radius: 8px; padding: 4px 10px;
+    font-weight: 600; font-size: 12.5px; cursor: pointer; margin-top: 8px; }
+  .aviso { font-size: 13px; padding: 8px 10px; border-radius: 8px; background: #fff7e6; color: #8a5300; margin-bottom: 10px; }
+  @media (prefers-color-scheme: dark) { .aviso { background: #3a2a10; color: #f4c47a; } }
+  .aviso button { margin-left: 8px; }
+  #cerrarApp { padding: 6px 12px; font-size: 13px; color: var(--error); }
+  .cerrado { position: fixed; inset: 0; background: var(--fondo); display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 10px; z-index: 50; font-size: 18px; text-align: center; padding: 20px; }
+  .cerrado small { color: var(--suave); font-size: 14px; }
+  .barra { height: 10px; background: rgba(127,127,127,.18); border-radius: 999px; overflow: hidden; margin-top: 8px; }
+  .barra > div { height: 100%; width: 0; background: var(--rojo); transition: width .4s; }
+  .etapa { font-size: 13px; margin-top: 10px; font-weight: 600; }
+  .etapa.ok { color: var(--ok); } .etapa.error { color: var(--error); }
+  .detalle { font-size: 12px; color: var(--error); white-space: pre-wrap; margin-top: 4px; }
+  .lista { display: flex; flex-direction: column; gap: 6px; max-height: 360px; overflow: auto; }
+  .item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--borde); border-radius: 10px; cursor: pointer; }
+  .item:hover { border-color: var(--rojo); }
+  .item.actual { border-color: var(--rojo); background: var(--rojo-suave); }
+  .item .n { flex: 1; min-width: 0; }
+  .item .n div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; font-size: 13.5px; }
+  .item .n small { color: var(--suave); font-size: 11.5px; }
+  .item button { border: 0; background: none; color: var(--suave); cursor: pointer; font-size: 15px; }
+  .btn { border: 1px solid var(--borde); background: var(--panel); color: var(--texto); padding: 9px 16px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 14px; }
+  .btn.prim { background: var(--rojo); color: #fff; border-color: var(--rojo); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .acciones { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+  .acciones .esp { flex: 1; }
+  #marco { width: 100%; height: calc(100vh - 210px); min-height: 560px; border: 1px solid var(--borde); border-radius: 12px; background: var(--panel); }
+  .vacio { color: var(--suave); text-align: center; padding: 80px 20px; }
+  .vacio b { color: var(--texto); }
+  dialog { border: 1px solid var(--borde); border-radius: 14px; background: var(--panel); color: var(--texto); width: min(900px, 92vw); }
+  dialog pre { max-height: 60vh; overflow: auto; font-size: 12px; background: var(--fondo); padding: 10px; border-radius: 8px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Subtitulador · <b>El Chapucero</b></h1>
+  <span class="chip" id="gpu">…</span>
+  <span class="esp"></span>
+  <button class="link" id="verRegistro">Registro</button>
+  <button class="link" id="abrirSalida">Carpeta Subtitulados</button>
+  <button class="btn" id="cerrarApp" title="Cierra el Subtitulador por completo (también el proceso de Python)">⏻ Cerrar</button>
+</header>
+
+<main>
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <section class="panel">
+      <h2>1. Elige el tipo de clip</h2>
+      <div class="estilos">
+        <button class="estilo activo" data-e="chapuceros">Clips Chapuceros<small>estudio</small></button>
+        <button class="estilo" data-e="fuera">Clips Fuera<small>de viaje</small></button>
+      </div>
+      <h2>2. Elige el clip ya editado</h2>
+      <button class="elegir" id="elegir"><b>Elegir video…</b><br>se abre la ventana para buscarlo en tu PC</button>
+      <div id="progreso" hidden>
+        <div class="etapa" id="etapa"></div>
+        <div class="filaprog"><div class="barra"><div id="relleno"></div></div>
+          <button class="cancelar" id="cancelar" hidden>Cancelar</button></div>
+        <div class="detalle" id="detalle"></div>
+      </div>
+    </section>
+    <section class="panel">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <h2 style="margin:0;flex:1">Clips recientes</h2>
+        <button class="link" id="limpiar" title="Borra de la lista los clips de días anteriores (los de hoy se quedan)">Borrar los de días anteriores</button>
+      </div>
+      <div class="lista" id="lista"><div style="color:var(--suave);font-size:13px">Todavía no hay clips.</div></div>
+    </section>
+  </div>
+
+  <section class="panel" id="trabajo">
+    <div class="acciones">
+      <div><b id="titulo">Ningún clip abierto</b><br><small id="salida" style="color:var(--suave)"></small></div>
+      <span class="esp"></span>
+      <button class="btn" id="verVideo" disabled>Ver en la carpeta</button>
+      <button class="btn prim" id="renderizar" disabled>Renderizar y Exportar</button>
+    </div>
+    <div id="avisoVideo" class="aviso" hidden></div>
+    <div id="vacio" class="vacio"><b>Así funciona:</b><br>1. Elige el tipo de clip y luego el video, a la izquierda.<br>
+      2. En cuanto estén los subtítulos, aquí los ves sobre el video y los corriges<br>
+      (<b>Shift+Enter</b> corta el renglón).<br>
+      3. Al terminar, <b>Renderizar y Exportar</b>: el video final se guarda en la carpeta <b>Subtitulados</b> de tu escritorio.<br><br>
+      Si después cambias el video (con el mismo nombre y en la misma carpeta), ábrelo desde <b>Clips recientes</b>:<br>
+      se usa la versión nueva con los subtítulos que ya tenías, sin volver a transcribir.</div>
+    <iframe id="marco" hidden></iframe>
+  </section>
+</main>
+
+<dialog id="dlg">
+  <h3 style="margin-top:0">Registro</h3>
+  <pre id="registro"></pre>
+  <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="document.getElementById('dlg').close()">Cerrar</button></div>
+</dialog>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let estilo = "chapuceros", actual = null, salidaActual = null, ocupado = false;
+
+document.querySelectorAll(".estilo").forEach(b => b.onclick = () => {
+  estilo = b.dataset.e;
+  document.querySelectorAll(".estilo").forEach(x => x.classList.toggle("activo", x === b));
+});
+
+async function api(url, cuerpo) {
+  const r = await fetch(url, cuerpo === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+function progreso(frac, texto, clase, detalle) {
+  $("progreso").hidden = false;
+  $("relleno").style.width = Math.round(100 * Math.min(1, Math.max(0, frac))) + "%";
+  $("etapa").textContent = texto; $("etapa").className = "etapa " + (clase || "");
+  $("detalle").textContent = detalle || "";
+}
+
+// ---------- sonido al terminar ----------
+const sonido = new Audio("/notificacion.mp3");
+function sonar() { try { sonido.currentTime = 0; sonido.play().catch(() => {}); } catch (e) {} }
+
+// ---------- elegir el video ----------
+let jobActual = null;
+$("elegir").onclick = async () => {
+  if (ocupado) { alert("Espera a que termine (o cancela) lo que se está procesando."); return; }
+  $("elegir").disabled = true;
+  try {
+    const r = await api("/api/elegir", {});
+    if (!r.ruta) return;
+    if (r.existente && confirm(`«${r.nombre}» ya tiene subtítulos hechos (${r.existente.fecha}).\n\n` +
+        "Aceptar = abrir esos subtítulos (si el video cambió se usa la versión nueva)\nCancelar = hacer subtítulos nuevos")) {
+      salidaActual = r.existente.salida || null;
+      abrirGuardado(r.existente.trabajo, r.existente.nombre);
+      return;
+    }
+    const d = await api("/api/procesar", { ruta: r.ruta, estilo });
+    cargarLista();
+    seguir(d.job, d.trabajo, r.nombre.replace(/\.[^.]+$/, ""));
+  } catch (e) { progreso(1, "No se pudo abrir el video", "error", e.message); }
+  finally { $("elegir").disabled = false; }
+};
+
+$("cancelar").onclick = async () => {
+  if (!jobActual) return;
+  if (!confirm("¿Cancelar lo que se está haciendo?")) return;
+  $("cancelar").disabled = true;
+  try { await api(`/api/cancelar/${jobActual}`, {}); } catch (e) {}
+};
+
+async function seguir(job, trabajo, nombre, alAbrir) {
+  ocupado = true; jobActual = job;
+  $("renderizar").disabled = true;
+  $("cancelar").hidden = false; $("cancelar").disabled = false;
+  const fin = () => { ocupado = false; jobActual = null; $("cancelar").hidden = true; };
+  while (true) {
+    let j;
+    try { j = await api(`/api/job/${job}`); } catch { await new Promise(r => setTimeout(r, 1500)); continue; }
+    if (j.estado === "cancelado") {
+      fin();
+      progreso(0, "Cancelado", "error");
+      $("renderizar").disabled = !actual;
+      cargarLista();
+      return;
+    }
+    if (j.estado === "listo") {
+      fin();
+      if (j.tipo === "revisar") {
+        progreso(1, "Video actualizado ✓", "ok");
+        mostrarAviso(j.aviso || "");
+        abrirTrabajo(trabajo, nombre, true);
+        cargarLista();
+        return;
+      }
+      sonar();
+      if (j.tipo === "render") {
+        progreso(1, "Listo ✓ el video se guardó en la carpeta Subtitulados", "ok");
+        salidaActual = j.salida;
+      } else {
+        progreso(1, "Subtítulos listos ✓ revísalos y al terminar «Renderizar y Exportar»", "ok");
+        salidaActual = null;
+      }
+      abrirTrabajo(trabajo, nombre, true);
+      cargarLista();
+      return;
+    }
+    if (j.estado === "error") {
+      fin();
+      progreso(1, "Algo falló", "error", (j.detalle || "") + "\n(Más detalles en «Registro», arriba a la derecha)");
+      $("renderizar").disabled = !actual;
+      return;
+    }
+    progreso(j.progreso || 0, j.estado === "en espera" ? "En espera…" : `${j.etapa}… ${Math.round(100 * (j.progreso || 0))}%`);
+    await new Promise(r => setTimeout(r, 1000));
+  }
+}
+
+// ---------- trabajo abierto ----------
+function mostrarAviso(txt, html) {
+  const a = $("avisoVideo");
+  if (!txt) { a.hidden = true; a.innerHTML = ""; return; }
+  a.hidden = false;
+  if (html) a.innerHTML = txt; else a.textContent = txt;
+}
+
+// al abrir un clip guardado: se busca su video en la ruta original (y se usa la versión nueva si cambió)
+async function abrirGuardado(t, nombre) {
+  if (ocupado) { alert("Espera a que termine (o cancela) lo que se está procesando."); return; }
+  mostrarAviso("");
+  let r;
+  try { r = await api("/api/abrir_trabajo", { trabajo: t }); }
+  catch (e) { progreso(1, "No se pudo abrir", "error", e.message); return; }
+  if (r.estado === "falta") {
+    actual = t; $("titulo").textContent = nombre;
+    $("vacio").hidden = true; $("marco").hidden = true; $("renderizar").disabled = true;
+    mostrarAviso(`No encuentro el video en su lugar:<br><b></b><br>¿Lo moviste o le cambiaste el nombre?` +
+      `<button class="btn" id="buscarOtraVez">Buscar el video</button>`, true);
+    $("avisoVideo").querySelector("b").textContent = r.ruta;
+    $("buscarOtraVez").onclick = async () => {
+      const x = await api("/api/relocalizar", { trabajo: t });
+      if (x.job) { mostrarAviso(""); progreso(0, "Revisando el video…"); seguir(x.job, t, nombre); }
+    };
+    return;
+  }
+  if (r.estado === "cambio") {
+    progreso(0, "El video cambió: actualizando…");
+    seguir(r.job, t, nombre);
+    return;
+  }
+  abrirTrabajo(t, nombre, true);
+}
+
+function abrirTrabajo(t, nombre, recargar) {
+  actual = t;
+  $("titulo").textContent = nombre || t.split(/[\\/]/).pop();
+  $("vacio").hidden = true;
+  const m = $("marco"); m.hidden = false;
+  if (recargar || !m.src.includes(encodeURIComponent(t))) m.src = `/sub/editor?t=${encodeURIComponent(t)}&v=${Date.now()}`;
+  $("renderizar").disabled = ocupado;
+  $("verVideo").disabled = !salidaActual;
+  $("salida").textContent = salidaActual ? "Guardado en: " + salidaActual : "";
+  document.querySelectorAll(".item").forEach(x => x.classList.toggle("actual", x.dataset.t === t));
+}
+
+$("renderizar").onclick = async () => {
+  if (!actual) return;
+  // primero se guardan los cambios que estén en el editor
+  try {
+    const w = $("marco").contentWindow;
+    if (w && w.guardarSubtitulos) await w.guardarSubtitulos();
+  } catch (e) { progreso(1, "No se pudieron guardar los subtítulos", "error", e.message); return; }
+  try {
+    const d = await api("/api/render", { trabajo: actual });
+    progreso(0, "Renderizando el video final…");
+    seguir(d.job, actual, $("titulo").textContent);
+  } catch (e) { progreso(1, "No se pudo renderizar", "error", e.message); }
+};
+$("verVideo").onclick = () => api("/api/abrir", { ruta: salidaActual || "" });
+$("abrirSalida").onclick = () => api("/api/abrir", {});
+
+// ---------- lista ----------
+async function cargarLista() {
+  const l = await api("/api/trabajos");
+  const lista = $("lista");
+  if (!l.length) return;
+  lista.innerHTML = "";
+  l.forEach(it => {
+    const d = document.createElement("div");
+    d.className = "item" + (it.trabajo === actual ? " actual" : ""); d.dataset.t = it.trabajo;
+    d.innerHTML = `<div class="n"><div></div><small>${it.estilo === "fuera" ? "Clips Fuera" : "Clips Chapuceros"} · ${it.fecha}${it.listo ? " · exportado" : (it.subtitulos ? " · sin exportar" : " · sin terminar")}</small></div>
+      <button title="Borrar de la lista">🗑</button>`;
+    d.querySelector(".n div").textContent = it.nombre;
+    d.title = it.ruta ? "Video: " + it.ruta : "";
+    d.onclick = () => { salidaActual = it.salida || null; abrirGuardado(it.trabajo, it.nombre); };
+    d.querySelector("button").onclick = async (e) => {
+      e.stopPropagation();
+      if (!confirm(`¿Borrar «${it.nombre}» de la lista? (el video que ya está en Subtitulados no se borra)`)) return;
+      await api("/api/borrar", { trabajo: it.trabajo });
+      if (actual === it.trabajo) { actual = null; $("marco").hidden = true; $("vacio").hidden = false; $("titulo").textContent = "Ningún clip abierto"; mostrarAviso(""); }
+      cargarLista();
+    };
+    lista.appendChild(d);
+  });
+}
+
+$("limpiar").onclick = async () => {
+  const hoy = new Date().toLocaleDateString("es-MX");
+  if (!confirm(`¿Borrar todos los clips de días anteriores?\nSe quedan solo los de hoy (${hoy}).\n` +
+               "Los videos que ya están en la carpeta Subtitulados NO se borran.")) return;
+  try {
+    const r = await api("/api/limpiar", {});
+    alert(r.borrados ? `Listo: se borraron ${r.borrados} clips (${r.mb} MB liberados).` : "No había clips de días anteriores.");
+    if (actual && !(await api("/api/trabajos")).some(x => x.trabajo === actual)) {
+      actual = null; $("marco").hidden = true; $("vacio").hidden = false; $("titulo").textContent = "Ningún clip abierto"; mostrarAviso("");
+    }
+    $("lista").innerHTML = '<div style="color:var(--suave);font-size:13px">Todavía no hay clips.</div>';
+    cargarLista();
+  } catch (e) { alert("No se pudo limpiar: " + e.message); }
+};
+
+$("cerrarApp").onclick = async () => {
+  const msg = ocupado ? "Hay un trabajo en proceso y se va a detener.\n¿Cerrar el Subtitulador de todos modos?"
+                      : "¿Cerrar el Subtitulador?";
+  if (!confirm(msg)) return;
+  try { await api("/api/cerrar", {}); } catch (e) {}
+  document.body.insertAdjacentHTML("beforeend",
+    '<div class="cerrado"><b>El Subtitulador se cerró.</b><small>Ya puedes cerrar esta pestaña. Para volver a usarlo, abre el acceso directo del escritorio.</small></div>');
+  setTimeout(() => { try { window.close(); } catch (e) {} }, 400);
+};
+
+$("verRegistro").onclick = async () => {
+  const r = await api("/api/registro");
+  $("registro").textContent = (r.texto || "Vacío") + (r.ruta ? `\n\nArchivo: ${r.ruta}` : "");
+  $("dlg").showModal();
+  $("registro").scrollTop = 1e9;
+};
+
+(async () => {
+  try {
+    const s = await api("/api/sistema");
+    $("gpu").textContent = `${s.gpu}${s.vram ? " · " + s.vram + " GB" : ""} · v${s.version}`;
+  } catch { $("gpu").textContent = "sin conexión"; }
+  cargarLista();
+})();
+</script>
+</body>
+</html>
